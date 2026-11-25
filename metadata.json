@@ -1,0 +1,6 @@
+{
+  "name": "Study Tracker",
+  "description": "Personal deep-work study tracker with real-time synced timer, giant full-screen mode, lock-screen chronometer, chapter checklists, goals, streaks, stats, exam countdowns, linked study files, and strict app blocker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

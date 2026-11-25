@@ -1,0 +1,604 @@
+{
+  "entities": {
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User preferences for theme, Pomodoro intervals, goals, streak threshold, blocker behavior, and alerts.",
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": ["dark", "amoled", "light", "system"],
+          "description": "Active appearance theme."
+        },
+        "accentHex": {
+          "type": "string",
+          "description": "Hex color string for primary accent."
+        },
+        "focusMin": {
+          "type": "integer",
+          "description": "Pomodoro focus interval in minutes."
+        },
+        "breakMin": {
+          "type": "integer",
+          "description": "Pomodoro short break interval in minutes."
+        },
+        "longBreakMin": {
+          "type": "integer",
+          "description": "Pomodoro long break interval in minutes."
+        },
+        "longEvery": {
+          "type": "integer",
+          "description": "Focus cycles before a long break."
+        },
+        "weekStartsOn": {
+          "type": "string",
+          "enum": ["sat", "sun", "mon", "tue", "wed", "thu", "fri"],
+          "description": "Day the study week begins."
+        },
+        "dailyGoalMin": {
+          "type": "integer",
+          "description": "Overall daily study goal in minutes."
+        },
+        "weeklyGoalMin": {
+          "type": "integer",
+          "description": "Overall weekly study goal in minutes."
+        },
+        "streakMinMinutes": {
+          "type": "integer",
+          "description": "Minimum daily minutes required to extend study streak."
+        },
+        "blockDuringBreaks": {
+          "type": "boolean",
+          "description": "Whether session-blocked apps remain blocked during Pomodoro breaks."
+        },
+        "strictLock": {
+          "type": "boolean",
+          "description": "When enabled, usage-limit rules cannot be loosened or deleted mid-period."
+        },
+        "alertSound": {
+          "type": "boolean",
+          "description": "Play sound on phase or goal completion."
+        },
+        "alertVibration": {
+          "type": "boolean",
+          "description": "Vibrate on phase or goal completion."
+        },
+        "dailyReminderHour": {
+          "type": "integer",
+          "description": "Hour (0-23) for daily study reminder, or -1 if disabled."
+        },
+        "dailyReminderMinute": {
+          "type": "integer",
+          "description": "Minute (0-59) for daily study reminder."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "theme",
+        "accentHex",
+        "focusMin",
+        "breakMin",
+        "longBreakMin",
+        "longEvery",
+        "weekStartsOn",
+        "dailyGoalMin",
+        "weeklyGoalMin",
+        "streakMinMinutes",
+        "blockDuringBreaks",
+        "strictLock",
+        "alertSound",
+        "alertVibration",
+        "dailyReminderHour",
+        "dailyReminderMinute",
+        "updatedAt"
+      ]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Academic course or study subject with color, emoji, and course code.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Subject display name."
+        },
+        "colorHex": {
+          "type": "string",
+          "description": "Subject hue hex color."
+        },
+        "emoji": {
+          "type": "string",
+          "description": "Subject emoji badge."
+        },
+        "courseCode": {
+          "type": "string",
+          "description": "Optional university course code."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display sort order."
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the subject is archived."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["name", "colorHex", "emoji", "courseCode", "order", "archived", "createdAt", "updatedAt"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Study checklist chapter or nested sub-item belonging to a subject.",
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "string",
+          "description": "ID of the parent subject."
+        },
+        "parentId": {
+          "type": "string",
+          "description": "Optional parent chapter ID for sub-items, empty string for top-level."
+        },
+        "title": {
+          "type": "string",
+          "description": "Chapter or sub-item title."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Sort position within its list."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Completion state."
+        },
+        "doneAtMs": {
+          "type": "integer",
+          "description": "Epoch milliseconds when marked done, or 0."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Optional ISO date string YYYY-MM-DD, or empty string."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["subjectId", "parentId", "title", "order", "done", "doneAtMs", "dueDate", "createdAt", "updatedAt"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "Completed study session record, either timed or manually entered.",
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "string",
+          "description": "Subject ID studied during this session."
+        },
+        "startAtMs": {
+          "type": "integer",
+          "description": "Session start epoch milliseconds."
+        },
+        "endAtMs": {
+          "type": "integer",
+          "description": "Session end epoch milliseconds."
+        },
+        "durationMs": {
+          "type": "integer",
+          "description": "Total focused duration in milliseconds."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["stopwatch", "pomodoro"],
+          "description": "Timer mode used for this session."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional session note."
+        },
+        "manual": {
+          "type": "boolean",
+          "description": "True if logged manually."
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Identifier of the device that recorded the session."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["subjectId", "startAtMs", "endAtMs", "durationMs", "mode", "note", "manual", "deviceId", "createdAt", "updatedAt"]
+    },
+    "ActiveSession": {
+      "title": "ActiveSession",
+      "description": "Timestamp-based live timer state synced in real time across devices.",
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "True when a timer session is running or paused."
+        },
+        "subjectId": {
+          "type": "string",
+          "description": "Selected subject ID."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["stopwatch", "pomodoro"],
+          "description": "Active timer mode."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "running", "paused"],
+          "description": "Current timer lifecycle state."
+        },
+        "phase": {
+          "type": "string",
+          "enum": ["focus", "break", "long_break"],
+          "description": "Current Pomodoro phase."
+        },
+        "phaseStartedAtMs": {
+          "type": "integer",
+          "description": "Server-adjusted epoch ms when the current running segment started."
+        },
+        "accumulatedMs": {
+          "type": "integer",
+          "description": "Accumulated milliseconds prior to phaseStartedAtMs."
+        },
+        "targetMs": {
+          "type": "integer",
+          "description": "Target phase duration in ms (0 for stopwatch)."
+        },
+        "cycleCount": {
+          "type": "integer",
+          "description": "Current Pomodoro cycle index (1-based)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional note attached to the running session."
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Device ID that started or last updated the session."
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Human-readable name of the originating device."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "active",
+        "subjectId",
+        "mode",
+        "status",
+        "phase",
+        "phaseStartedAtMs",
+        "accumulatedMs",
+        "targetMs",
+        "cycleCount",
+        "note",
+        "deviceId",
+        "deviceName",
+        "updatedAt"
+      ]
+    },
+    "StudyGoal": {
+      "title": "StudyGoal",
+      "description": "Daily or weekly study time target overall or for a specific subject.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "'overall' or a subjectId."
+        },
+        "period": {
+          "type": "string",
+          "enum": ["daily", "weekly"],
+          "description": "Goal cadence."
+        },
+        "targetMin": {
+          "type": "integer",
+          "description": "Target study minutes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["scope", "period", "targetMin", "createdAt", "updatedAt"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "Upcoming exam countdown with reminder offsets.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Exam title."
+        },
+        "subjectId": {
+          "type": "string",
+          "description": "Associated subject ID."
+        },
+        "date": {
+          "type": "string",
+          "description": "Exam date in YYYY-MM-DD format."
+        },
+        "reminderDays": {
+          "type": "array",
+          "description": "Days before exam to schedule local reminder alarms (e.g. [7, 3, 1])."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["title", "subjectId", "date", "reminderDays", "createdAt", "updatedAt"]
+    },
+    "LinkedFileEntry": {
+      "title": "LinkedFileEntry",
+      "description": "Synced metadata for a study file (never stores local file paths or URIs).",
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "string",
+          "description": "Subject ID this file belongs to."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User-visible file name."
+        },
+        "mime": {
+          "type": "string",
+          "description": "MIME type used for file-type icon display."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Sort order inside subject."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["subjectId", "displayName", "mime", "order", "createdAt", "updatedAt"]
+    },
+    "BlockRule": {
+      "title": "BlockRule",
+      "description": "Per-platform app usage limit rule with tamper-resistant lockedUntil enforcement.",
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["android", "windows"],
+          "description": "Target OS platform."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["limit"],
+          "description": "Rule kind."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "Android package name or Windows executable name."
+        },
+        "targetLabel": {
+          "type": "string",
+          "description": "Human-readable app name."
+        },
+        "allowanceMin": {
+          "type": "integer",
+          "description": "Allowed foreground usage minutes per period."
+        },
+        "periodType": {
+          "type": "string",
+          "enum": ["hours", "day", "week", "month"],
+          "description": "Repeating period unit."
+        },
+        "periodCount": {
+          "type": "integer",
+          "description": "Number of units for hours periods (1..24), or 1 for day/week/month."
+        },
+        "lockedUntil": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional timestamp until which the rule cannot be deleted or loosened."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "platform",
+        "kind",
+        "targetId",
+        "targetLabel",
+        "allowanceMin",
+        "periodType",
+        "periodCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SessionBlocklist": {
+      "title": "SessionBlocklist",
+      "description": "Per-platform lists of apps blocked whenever a study session is active.",
+      "type": "object",
+      "properties": {
+        "android": {
+          "type": "array",
+          "description": "Blocked Android package names."
+        },
+        "windows": {
+          "type": "array",
+          "description": "Blocked Windows executable names."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["android", "windows", "updatedAt"]
+    },
+    "DeviceRecord": {
+      "title": "DeviceRecord",
+      "description": "Registered device syncing with this account.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Device model or friendly name."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["android", "windows"],
+          "description": "Operating system platform."
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last heartbeat (FieldValue.serverTimestamp())."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["name", "platform", "lastSeen", "createdAt"]
+    },
+    "DailyStreak": {
+      "title": "DailyStreak",
+      "description": "Persisted daily study streak incremented when the user completes a study session of at least 25 minutes.",
+      "type": "object",
+      "properties": {
+        "currentStreak": {
+          "type": "integer",
+          "description": "Current consecutive days with a 25+ minute study session."
+        },
+        "longestStreak": {
+          "type": "integer",
+          "description": "Highest consecutive daily streak achieved."
+        },
+        "lastCompletedDate": {
+          "type": "string",
+          "description": "ISO date YYYY-MM-DD when the streak was last incremented, or empty string."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["currentStreak", "longestStreak", "lastCompletedDate", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/settings/{docId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Single settings document ('config') for the user."
+    },
+    "/users/{userId}/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "User study subjects."
+    },
+    "/users/{userId}/chapters/{chapterId}": {
+      "schema": { "$ref": "#/entities/Chapter" },
+      "description": "Study checklist chapters and nested sub-items."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/StudySession" },
+      "description": "Logged study sessions."
+    },
+    "/users/{userId}/activeSession/{docId}": {
+      "schema": { "$ref": "#/entities/ActiveSession" },
+      "description": "Single active session document ('current') for live cross-device timer sync."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/StudyGoal" },
+      "description": "Overall and per-subject daily/weekly study goals."
+    },
+    "/users/{userId}/exams/{examId}": {
+      "schema": { "$ref": "#/entities/Exam" },
+      "description": "Exam countdowns and reminder schedules."
+    },
+    "/users/{userId}/files/{fileId}": {
+      "schema": { "$ref": "#/entities/LinkedFileEntry" },
+      "description": "Synced study file catalog metadata (paths/URIs stored strictly locally)."
+    },
+    "/users/{userId}/blockRules/{ruleId}": {
+      "schema": { "$ref": "#/entities/BlockRule" },
+      "description": "Per-platform app usage limit rules with lockedUntil enforcement."
+    },
+    "/users/{userId}/sessionBlocklist/{docId}": {
+      "schema": { "$ref": "#/entities/SessionBlocklist" },
+      "description": "Single document ('current') listing apps blocked during study sessions."
+    },
+    "/users/{userId}/devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/DeviceRecord" },
+      "description": "Connected devices and last-seen heartbeats."
+    },
+    "/users/{userId}/streak/{docId}": {
+      "schema": { "$ref": "#/entities/DailyStreak" },
+      "description": "Single document ('current') storing the user's daily 25+ minute session streak."
+    }
+  }
+}

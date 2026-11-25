@@ -1,0 +1,426 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(val) {
+      return val is timestamp && val <= request.time;
+    }
+
+    // --- ENTITY VALIDATION BLUEPRINTS ---
+
+    function isValidUserSettings(data) {
+      return data.keys().hasAll([
+          'theme', 'accentHex', 'focusMin', 'breakMin', 'longBreakMin', 'longEvery',
+          'weekStartsOn', 'dailyGoalMin', 'weeklyGoalMin', 'streakMinMinutes',
+          'blockDuringBreaks', 'strictLock', 'alertSound', 'alertVibration',
+          'dailyReminderHour', 'dailyReminderMinute', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'theme', 'accentHex', 'focusMin', 'breakMin', 'longBreakMin', 'longEvery',
+          'weekStartsOn', 'dailyGoalMin', 'weeklyGoalMin', 'streakMinMinutes',
+          'blockDuringBreaks', 'strictLock', 'alertSound', 'alertVibration',
+          'dailyReminderHour', 'dailyReminderMinute', 'updatedAt'
+        ]) &&
+        data.theme in ['dark', 'amoled', 'light', 'system'] &&
+        data.accentHex is string && data.accentHex.size() >= 4 && data.accentHex.size() <= 16 &&
+        data.focusMin is int && data.focusMin >= 1 && data.focusMin <= 180 &&
+        data.breakMin is int && data.breakMin >= 1 && data.breakMin <= 60 &&
+        data.longBreakMin is int && data.longBreakMin >= 1 && data.longBreakMin <= 90 &&
+        data.longEvery is int && data.longEvery >= 1 && data.longEvery <= 12 &&
+        data.weekStartsOn in ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] &&
+        data.dailyGoalMin is int && data.dailyGoalMin >= 5 && data.dailyGoalMin <= 1440 &&
+        data.weeklyGoalMin is int && data.weeklyGoalMin >= 30 && data.weeklyGoalMin <= 10080 &&
+        data.streakMinMinutes is int && data.streakMinMinutes >= 5 && data.streakMinMinutes <= 1440 &&
+        data.blockDuringBreaks is bool &&
+        data.strictLock is bool &&
+        data.alertSound is bool &&
+        data.alertVibration is bool &&
+        data.dailyReminderHour is int && data.dailyReminderHour >= -1 && data.dailyReminderHour <= 23 &&
+        data.dailyReminderMinute is int && data.dailyReminderMinute >= 0 && data.dailyReminderMinute <= 59 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSubject(data) {
+      return data.keys().hasAll([
+          'name', 'colorHex', 'emoji', 'courseCode', 'order', 'archived', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'name', 'colorHex', 'emoji', 'courseCode', 'order', 'archived', 'createdAt', 'updatedAt'
+        ]) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.colorHex is string && data.colorHex.size() >= 4 && data.colorHex.size() <= 16 &&
+        data.emoji is string && data.emoji.size() <= 16 &&
+        data.courseCode is string && data.courseCode.size() <= 32 &&
+        data.order is int && data.order >= 0 && data.order <= 100000 &&
+        data.archived is bool &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChapter(data) {
+      return data.keys().hasAll([
+          'subjectId', 'parentId', 'title', 'order', 'done', 'doneAtMs', 'dueDate', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'subjectId', 'parentId', 'title', 'order', 'done', 'doneAtMs', 'dueDate', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.subjectId) &&
+        data.parentId is string && data.parentId.size() <= 128 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.order is int && data.order >= 0 && data.order <= 100000 &&
+        data.done is bool &&
+        data.doneAtMs is int && data.doneAtMs >= 0 &&
+        data.dueDate is string && data.dueDate.size() <= 32 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidStudySession(data) {
+      return data.keys().hasAll([
+          'subjectId', 'startAtMs', 'endAtMs', 'durationMs', 'mode', 'note', 'manual', 'deviceId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'subjectId', 'startAtMs', 'endAtMs', 'durationMs', 'mode', 'note', 'manual', 'deviceId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.subjectId) &&
+        data.startAtMs is int && data.startAtMs > 0 &&
+        data.endAtMs is int && data.endAtMs >= data.startAtMs &&
+        data.durationMs is int && data.durationMs >= 0 && data.durationMs <= 86400000 &&
+        data.mode in ['stopwatch', 'pomodoro'] &&
+        data.note is string && data.note.size() <= 500 &&
+        data.manual is bool &&
+        data.deviceId is string && data.deviceId.size() >= 1 && data.deviceId.size() <= 128 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidActiveSession(data) {
+      return data.keys().hasAll([
+          'active', 'subjectId', 'mode', 'status', 'phase', 'phaseStartedAtMs',
+          'accumulatedMs', 'targetMs', 'cycleCount', 'note', 'deviceId', 'deviceName', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'active', 'subjectId', 'mode', 'status', 'phase', 'phaseStartedAtMs',
+          'accumulatedMs', 'targetMs', 'cycleCount', 'note', 'deviceId', 'deviceName', 'updatedAt'
+        ]) &&
+        data.active is bool &&
+        data.subjectId is string && data.subjectId.size() <= 128 &&
+        data.mode in ['stopwatch', 'pomodoro'] &&
+        data.status in ['idle', 'running', 'paused'] &&
+        data.phase in ['focus', 'break', 'long_break'] &&
+        data.phaseStartedAtMs is int && data.phaseStartedAtMs >= 0 &&
+        data.accumulatedMs is int && data.accumulatedMs >= 0 &&
+        data.targetMs is int && data.targetMs >= 0 &&
+        data.cycleCount is int && data.cycleCount >= 0 && data.cycleCount <= 100 &&
+        data.note is string && data.note.size() <= 500 &&
+        data.deviceId is string && data.deviceId.size() >= 1 && data.deviceId.size() <= 128 &&
+        data.deviceName is string && data.deviceName.size() <= 100 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGoal(data) {
+      return data.keys().hasAll([
+          'scope', 'period', 'targetMin', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'scope', 'period', 'targetMin', 'createdAt', 'updatedAt'
+        ]) &&
+        data.scope is string && data.scope.size() >= 1 && data.scope.size() <= 128 &&
+        data.period in ['daily', 'weekly'] &&
+        data.targetMin is int && data.targetMin >= 1 && data.targetMin <= 10080 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidExam(data) {
+      return data.keys().hasAll([
+          'title', 'subjectId', 'date', 'reminderDays', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title', 'subjectId', 'date', 'reminderDays', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.subjectId is string && data.subjectId.size() <= 128 &&
+        data.date is string && data.date.size() >= 8 && data.date.size() <= 32 &&
+        data.reminderDays is list && data.reminderDays.size() <= 5 &&
+        (data.reminderDays.size() == 0 || data.reminderDays[0] is int) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLinkedFile(data) {
+      return data.keys().hasAll([
+          'subjectId', 'displayName', 'mime', 'order', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'subjectId', 'displayName', 'mime', 'order', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.subjectId) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 200 &&
+        data.mime is string && data.mime.size() <= 120 &&
+        data.order is int && data.order >= 0 && data.order <= 100000 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function periodWeightHours(periodType, periodCount) {
+      return periodType == 'hours' ? periodCount :
+             periodType == 'day' ? 24 :
+             periodType == 'week' ? 168 :
+             720;
+    }
+
+    function isBlockRuleLocked(data) {
+      return ('lockedUntil' in data) && data.lockedUntil is timestamp && data.lockedUntil > request.time;
+    }
+
+    function isValidBlockRule(data) {
+      return data.keys().hasAll([
+          'platform', 'kind', 'targetId', 'targetLabel', 'allowanceMin',
+          'periodType', 'periodCount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'platform', 'kind', 'targetId', 'targetLabel', 'allowanceMin',
+          'periodType', 'periodCount', 'lockedUntil', 'createdAt', 'updatedAt'
+        ]) &&
+        data.platform in ['android', 'windows'] &&
+        data.kind == 'limit' &&
+        data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 200 &&
+        data.targetLabel is string && data.targetLabel.size() >= 1 && data.targetLabel.size() <= 120 &&
+        data.allowanceMin is int && data.allowanceMin >= 1 && data.allowanceMin <= 1440 &&
+        data.periodType in ['hours', 'day', 'week', 'month'] &&
+        data.periodCount is int && data.periodCount >= 1 && data.periodCount <= 24 &&
+        (!('lockedUntil' in data) || data.lockedUntil == null || data.lockedUntil is timestamp) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSessionBlocklist(data) {
+      return data.keys().hasAll(['android', 'windows', 'updatedAt']) &&
+        data.keys().hasOnly(['android', 'windows', 'updatedAt']) &&
+        data.android is list && data.android.size() <= 200 &&
+        (data.android.size() == 0 || data.android[0] is string) &&
+        data.windows is list && data.windows.size() <= 200 &&
+        (data.windows.size() == 0 || data.windows[0] is string) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDeviceRecord(data) {
+      return data.keys().hasAll(['name', 'platform', 'lastSeen', 'createdAt']) &&
+        data.keys().hasOnly(['name', 'platform', 'lastSeen', 'createdAt']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.platform in ['android', 'windows'] &&
+        isValidTimestamp(data.lastSeen) &&
+        isValidTimestamp(data.createdAt);
+    }
+
+    function isValidDailyStreak(data) {
+      return data.keys().hasAll(['currentStreak', 'longestStreak', 'lastCompletedDate', 'updatedAt']) &&
+        data.keys().hasOnly(['currentStreak', 'longestStreak', 'lastCompletedDate', 'updatedAt']) &&
+        data.currentStreak is int && data.currentStreak >= 0 && data.currentStreak <= 100000 &&
+        data.longestStreak is int && data.longestStreak >= 0 && data.longestStreak <= 100000 &&
+        data.longestStreak >= data.currentStreak &&
+        data.lastCompletedDate is string && data.lastCompletedDate.size() <= 16 &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- USER-SCOPED COLLECTIONS ---
+    match /users/{userId} {
+      // Settings (single doc: 'config')
+      match /settings/{docId} {
+        allow get: if isOwner(userId) && isValidId(docId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(docId) && isValidUserSettings(incoming());
+        allow update: if isOwner(userId) && isValidId(docId) && isValidUserSettings(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'theme', 'accentHex', 'focusMin', 'breakMin', 'longBreakMin', 'longEvery',
+            'weekStartsOn', 'dailyGoalMin', 'weeklyGoalMin', 'streakMinMinutes',
+            'blockDuringBreaks', 'strictLock', 'alertSound', 'alertVibration',
+            'dailyReminderHour', 'dailyReminderMinute', 'updatedAt'
+          ]);
+        allow delete: if false;
+      }
+
+      // Subjects
+      match /subjects/{subjectId} {
+        allow get: if isOwner(userId) && isValidId(subjectId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(subjectId) && isValidSubject(incoming());
+        allow update: if isOwner(userId) && isValidId(subjectId) && isValidSubject(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'colorHex', 'emoji', 'courseCode', 'order', 'archived', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(subjectId);
+      }
+
+      // Chapters
+      match /chapters/{chapterId} {
+        allow get: if isOwner(userId) && isValidId(chapterId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(chapterId) && isValidChapter(incoming());
+        allow update: if isOwner(userId) && isValidId(chapterId) && isValidChapter(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'subjectId', 'parentId', 'title', 'order', 'done', 'doneAtMs', 'dueDate', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(chapterId);
+      }
+
+      // Study Sessions
+      match /sessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(sessionId) && isValidStudySession(incoming());
+        allow update: if isOwner(userId) && isValidId(sessionId) && isValidStudySession(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'subjectId', 'startAtMs', 'endAtMs', 'durationMs', 'mode', 'note', 'manual', 'deviceId', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(sessionId);
+      }
+
+      // Active Session (single doc: 'current')
+      match /activeSession/{docId} {
+        allow get: if isOwner(userId) && isValidId(docId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(docId) && isValidActiveSession(incoming());
+        allow update: if isOwner(userId) && isValidId(docId) && isValidActiveSession(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'active', 'subjectId', 'mode', 'status', 'phase', 'phaseStartedAtMs',
+            'accumulatedMs', 'targetMs', 'cycleCount', 'note', 'deviceId', 'deviceName', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(docId);
+      }
+
+      // Study Goals
+      match /goals/{goalId} {
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+        allow update: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'scope', 'period', 'targetMin', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(goalId);
+      }
+
+      // Exams
+      match /exams/{examId} {
+        allow get: if isOwner(userId) && isValidId(examId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(examId) && isValidExam(incoming());
+        allow update: if isOwner(userId) && isValidId(examId) && isValidExam(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'subjectId', 'date', 'reminderDays', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(examId);
+      }
+
+      // Linked Files (metadata only; URIs/paths never stored here)
+      match /files/{fileId} {
+        allow get: if isOwner(userId) && isValidId(fileId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(fileId) && isValidLinkedFile(incoming());
+        allow update: if isOwner(userId) && isValidId(fileId) && isValidLinkedFile(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'subjectId', 'displayName', 'mime', 'order', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(fileId);
+      }
+
+      // Usage-Limit Block Rules (tamper-resistant lock rule!)
+      // Cannot be deleted or loosened while lockedUntil > request.time. Tightening is always allowed.
+      match /blockRules/{ruleId} {
+        allow get: if isOwner(userId) && isValidId(ruleId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(ruleId) && isValidBlockRule(incoming());
+        allow update: if isOwner(userId) && isValidId(ruleId) && isValidBlockRule(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().platform == existing().platform &&
+          incoming().kind == existing().kind &&
+          incoming().targetId == existing().targetId &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'targetLabel', 'allowanceMin', 'periodType', 'periodCount', 'lockedUntil', 'updatedAt'
+          ]) &&
+          (
+            // Action A: Rule is NOT currently locked -> free edit or engaging lock
+            !isBlockRuleLocked(existing()) ||
+            // Action B: Rule IS locked -> tightening only (cannot raise allowance, shorten period, or reduce lockedUntil)
+            (
+              incoming().allowanceMin <= existing().allowanceMin &&
+              periodWeightHours(incoming().periodType, incoming().periodCount) >=
+                periodWeightHours(existing().periodType, existing().periodCount) &&
+              ('lockedUntil' in incoming()) &&
+              incoming().lockedUntil is timestamp &&
+              incoming().lockedUntil >= existing().lockedUntil
+            )
+          );
+        allow delete: if isOwner(userId) && isValidId(ruleId) && !isBlockRuleLocked(existing());
+      }
+
+      // Session Blocklist (single doc: 'current')
+      match /sessionBlocklist/{docId} {
+        allow get: if isOwner(userId) && isValidId(docId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(docId) && isValidSessionBlocklist(incoming());
+        allow update: if isOwner(userId) && isValidId(docId) && isValidSessionBlocklist(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['android', 'windows', 'updatedAt']);
+        allow delete: if false;
+      }
+
+      // Devices
+      match /devices/{deviceId} {
+        allow get: if isOwner(userId) && isValidId(deviceId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(deviceId) && isValidDeviceRecord(incoming());
+        allow update: if isOwner(userId) && isValidId(deviceId) && isValidDeviceRecord(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().platform == existing().platform &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'lastSeen']);
+        allow delete: if isOwner(userId) && isValidId(deviceId);
+      }
+
+      // Daily Streak (single doc: 'current')
+      match /streak/{docId} {
+        allow get: if isOwner(userId) && isValidId(docId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(docId) && isValidDailyStreak(incoming());
+        allow update: if isOwner(userId) && isValidId(docId) && isValidDailyStreak(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'currentStreak', 'longestStreak', 'lastCompletedDate', 'updatedAt'
+          ]);
+        allow delete: if false;
+      }
+    }
+  }
+}
